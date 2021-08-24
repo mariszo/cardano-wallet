@@ -18,7 +18,7 @@
       author = "IOHK Engineering Team";
       homepage = "https://github.com/input-output-hk/cardano-wallet";
       url = "";
-      synopsis = "Utilities for a building Command-Line Interfaces";
+      synopsis = "Mutable variables that are written to disk using delta encodings.";
       description = "";
       buildType = "Simple";
       isLocal = true;
@@ -29,6 +29,7 @@
           (hsPkgs."base" or (errorHandler.buildDepError "base"))
           (hsPkgs."containers" or (errorHandler.buildDepError "containers"))
           (hsPkgs."io-classes" or (errorHandler.buildDepError "io-classes"))
+          (hsPkgs."safe" or (errorHandler.buildDepError "safe"))
           ];
         buildable = true;
         };
