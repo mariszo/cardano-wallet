@@ -53,7 +53,12 @@ instance Delta (Replace a) where
     apply (Replace a) _ = a
 
 -- | A list of deltas can be applied like a single delta.
--- This overloading of 'apply' is very useful.
+--
+-- This overloading of 'apply' is very useful,
+-- and it is a morphism of 'Monoid':
+--
+-- > apply []         = id
+-- > apply (d1 <> d2) = apply d1 . apply d2
 instance Delta delta => Delta [delta] where
     type instance Base [delta] = Base delta
     apply = foldr (.) id . map apply
