@@ -12,7 +12,7 @@ module Data.Chain (
     , edges, toEdges, summary
 
     -- * DeltaChain
-    , DeltaChain
+    , DeltaChain (..)
     , appendTip, collapseNode, rollbackTo
     , chainIntoTable
 
@@ -56,7 +56,7 @@ data Chain node edge = Chain
     { next :: Map node (edge, node)
     , prev :: Map node (Maybe node)
     , tip  :: node
-    }
+    } deriving (Eq, Show)
 
 instance Functor (Chain node) where
     fmap f chain = chain{ next = fmap (\(e,n) -> (f e, n)) (next chain) }
