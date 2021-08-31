@@ -23,6 +23,12 @@ module Data.Table (
 
 import Prelude
 
+import Control.Monad
+    ( forM )
+import Control.Monad.Trans.State.Strict
+    ( state
+    , evalState
+    )
 import Data.Delta
     ( Delta (..)
     , Embedding (..)
@@ -39,7 +45,7 @@ import qualified Data.IntMap.Strict as Map
 data Table row = Table
     { rows :: IntMap row
     , uids :: Supply Int
-    }
+    } deriving (Show)
 
 instance Functor Table where
     fmap f table@Table{rows} = table{ rows = Map.map f rows }
@@ -83,22 +89,40 @@ data DeltaTable row
     | DeleteWhere (row -> Bool)
     | UpdateWhere (row -> Bool) (row -> row)
 
+instance Show row => Show (DeltaTable row) where
+    showsPrec d delta = showParen (d > app_prec) $ case delta of
+        InsertMany rs -> showString "InsertMany " . showsPrec (app_prec+1) rs
+        DeleteWhere _ -> showString "DeleteWhere (..)"
+        UpdateWhere _ _ -> showString "UpdateWhere (..)"
+      where app_prec = 10
+
 instance Delta (DeltaTable row) where
     type instance Base (DeltaTable row) = Table row
     apply (InsertMany rows) = insertMany rows
-    apply (DeleteWhere p) = deleteWhere p
+    apply (DeleteWhere p)   = deleteWhere p
     apply (UpdateWhere p f) = updateWhere p f
 
 -- | Delta encoding for changes to a database table with uniqe IDs.
 data DeltaDB key row
-    = InsertManyDB [row]
+    = InsertManyDB [(key, row)]
     | DeleteManyDB [key]
     | UpdateManyDB [(key, row)]
+    deriving (Eq, Show)
 
 instance Functor (DeltaDB key) where
-    fmap f (InsertManyDB rs) = InsertManyDB (fmap f rs)
+    fmap f (InsertManyDB zs) = InsertManyDB [ (k, f r) | (k,r) <- zs ]
     fmap _ (DeleteManyDB ks) = DeleteManyDB ks
-    fmap f (UpdateManyDB krs) = UpdateManyDB [ (k, f r) | (k,r) <- krs ]
+    fmap f (UpdateManyDB zs) = UpdateManyDB [ (k, f r) | (k,r) <- zs ]
+
+instance (key ~ Int) => Delta (DeltaDB key row) where
+    type instance Base (DeltaDB key row) = Table row
+    apply (InsertManyDB zs) table@Table{rows} =
+        table{ rows = foldr (.) id [ Map.insert k r | (k,r) <- zs ] rows }
+    apply (DeleteManyDB ks) table@Table{rows} =
+        table{ rows = foldr (.) id [ Map.delete k | k <- ks ] rows }
+    apply (UpdateManyDB zs) table@Table{rows} =
+        table{ rows = foldr (.) id [ Map.adjust (const r) k | (k,r) <- zs ] rows }
+-- FIXME: Enlarge UID supply as necessary for InsertManyDB!
 
 tableIntoDatabase :: Embedding
     (Table row) [DeltaTable row]
@@ -107,12 +131,14 @@ tableIntoDatabase = Embedding{ load, write, update = fmap . update1 }
   where
     load = Just . id
     write = id
-    update1 _ (InsertMany rs)
-        = InsertManyDB rs
+    update1 Table{uids} (InsertMany rs) = InsertManyDB (zip keys rs)
+      where
+        keys = flip evalState uids $ forM (reverse rs) $ \_ -> state fresh
     update1 Table{rows} (DeleteWhere p)
         = DeleteManyDB [ key | (key,row) <- Map.toList rows, p row ]
     update1 Table{rows} (UpdateWhere p f)
         = UpdateManyDB [ (key, f row) | (key,row) <- Map.toList rows, p row ]
+-- FIXME! Be careful about the order of updates here.
 
 {-------------------------------------------------------------------------------
     Supply
@@ -122,6 +148,11 @@ data Supply uid = Supply
     { now  :: !uid
     , next :: uid -> uid
     }
+
+instance Show uid => Show (Supply uid) where
+    showsPrec d (Supply{now}) = showParen (d > app_prec) $
+        showString "Supply {now = " . showsPrec 0 now . showString "} "
+      where app_prec = 10
 
 -- | Fresh supply of unique IDs.
 abundance :: Enum uid => Supply uid
