@@ -31,6 +31,7 @@ import Control.Monad
 import Data.Delta
     ( Delta (..)
     , Embedding (..)
+    , compose
     )
 import Data.List
     ( unfoldr )
@@ -256,6 +257,27 @@ chainIntoTable = Embedding {load,write,update}
     updateFrom old new = [UpdateWhere (\Edge{from} -> from == old) (\e -> e{from=new})]
         -- Wait. If we are at the beginning of the chain,
         -- I have to delete the entries, not just update them!
+
+{-------------------------------------------------------------------------------
+    Tests
+-------------------------------------------------------------------------------}
+test :: (Table (Edge Int Char), [[Table.DeltaDB Int (Edge Int Char)]])
+test = liftUpdates (Table.tableIntoDatabase `compose` chainIntoTable)
+    [CollapseNode 1, AppendTip 3 "DC", AppendTip 2 "B"]
+    (fromEdge Edge{from=0,to=1,via="A"})
+
+liftUpdates
+    :: (Delta delta2, a2 ~ Base delta2)
+    => Embedding a1 delta1 a2 delta2
+    -> [delta1] -> a1 -> (a2, [delta2])
+liftUpdates Embedding{load,write,update} ds a1 = go ds (write a1)
+  where
+    go []     ain = (ain, [])
+    go (d:ds) ain = case load aout of
+        Nothing -> (aout, es)
+        Just a1 -> let e = update a1 d in (apply e aout, e : es)
+      where
+        (aout, es) = go ds ain
 
 {-------------------------------------------------------------------------------
     Edge
