@@ -27,9 +27,16 @@
       "library" = {
         depends = [
           (hsPkgs."base" or (errorHandler.buildDepError "base"))
+          (hsPkgs."conduit" or (errorHandler.buildDepError "conduit"))
           (hsPkgs."containers" or (errorHandler.buildDepError "containers"))
+          (hsPkgs."generic-lens" or (errorHandler.buildDepError "generic-lens"))
           (hsPkgs."io-classes" or (errorHandler.buildDepError "io-classes"))
+          (hsPkgs."monad-logger" or (errorHandler.buildDepError "monad-logger"))
+          (hsPkgs."persistent" or (errorHandler.buildDepError "persistent"))
+          (hsPkgs."persistent-sqlite" or (errorHandler.buildDepError "persistent-sqlite"))
           (hsPkgs."safe" or (errorHandler.buildDepError "safe"))
+          (hsPkgs."text" or (errorHandler.buildDepError "text"))
+          (hsPkgs."transformers" or (errorHandler.buildDepError "transformers"))
           ];
         buildable = true;
         };
