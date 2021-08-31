@@ -8,7 +8,8 @@ module Data.Chain (
     -- * Chain
       Chain
     , member, ChainContext, lookup
-    , singleton, fromEdge, fromEdges
+    --, singleton
+    , fromEdge, fromEdges
     , edges, toEdges, summary
 
     -- * DeltaChain
@@ -76,29 +77,37 @@ lookup node Chain{next,prev} =
             Nothing
         (after, Just Nothing) ->
             Just Edge{ via=node, to=after, from=Nothing }
-        (after, Just (Just before)) ->
-            Just Edge{ via=node, to=after, from=Map.lookup before next }
+        (after, Just (Just before)) -> let adjust (e,_) = (e,before) in
+            Just Edge{ via=node, to=after, from=adjust <$> Map.lookup before next }
 
+{-
 -- | Chain with a single node and no edges.
+--
+-- FIXME: This cannot be represented in a database that only stores edges.
 singleton :: Ord node => node -> Chain node edge
 singleton node = Chain
     { next = Map.empty
     , prev = Map.fromList [(node, Nothing)]
     , tip  = node
     }
+-}
 
 -- | Construct a chain from a single 'Edge'.
 fromEdge :: Ord node => Edge node edge -> Chain node edge
 fromEdge Edge{from,to,via} = Chain
     { next = Map.fromList [(from, (via,to))]
-    , prev = Map.fromList [(to, Just from)]
+    , prev = Map.fromList [(to, Just from), (from, Nothing)]
     , tip  = to
     }
 
 -- | Construct a chain from a collection of edges.
 -- Fails if the edges do not fit together.
 --
--- FIXME: Order?
+-- FIXME: Order of @edge@ labels? This is important.
+-- We probably need to model the edges in the table as a set.
+--
+-- FIXME: Edges in the table correspond to NonEmpty list.
+-- Need to deal with that properly.
 fromEdges :: Ord node => [Edge node edge] -> Maybe (Chain node [edge])
 fromEdges []     = Nothing
 fromEdges (e:es) = ($ fromEdge' e) . foldr (<=<) Just $ map addEdge es
@@ -213,7 +222,8 @@ addEdge Edge{from,to,via} chain@Chain{next,prev,tip} =
             { next = Map.insert from ([via], to) next
             , prev
                 = Map.insert to (Just from)
-                $ Map.insertWith (\_ old -> old) from Nothing prev
+                . Map.insertWith (\_ old -> old) from Nothing
+                $ prev
             , tip = if from == tip then to else tip
             }
 
@@ -244,6 +254,8 @@ chainIntoTable = Embedding {load,write,update}
             <> maybe [] (\(_,new) -> updateFrom now new) from
     updateTo old new = [UpdateWhere (\Edge{to} -> to == old) (\e -> e{to=new})]
     updateFrom old new = [UpdateWhere (\Edge{from} -> from == old) (\e -> e{from=new})]
+        -- Wait. If we are at the beginning of the chain,
+        -- I have to delete the entries, not just update them!
 
 {-------------------------------------------------------------------------------
     Edge
