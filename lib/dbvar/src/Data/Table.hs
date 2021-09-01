@@ -18,7 +18,7 @@ module Data.Table (
 
     -- * Supply
     , Supply
-    , abundance, fresh
+    , abundance, fresh, consume
     ) where
 
 import Prelude
@@ -44,7 +44,7 @@ import qualified Data.IntMap.Strict as Map
 -- | A 'Table' is a collection of rows.
 data Table row = Table
     { rows :: IntMap row
-    , uids :: Supply Int
+    , uids :: Supply
     } deriving (Show)
 
 instance Functor Table where
@@ -116,9 +116,10 @@ instance Functor (DeltaDB key) where
 
 instance (key ~ Int) => Delta (DeltaDB key row) where
     type instance Base (DeltaDB key row) = Table row
-    apply (InsertManyDB zs) table@Table{rows} =
-        -- FIXME: Enlarge the UID supply when inserting into the database!
-        table{ rows = foldr (.) id [ Map.insert k r | (k,r) <- zs ] rows }
+    apply (InsertManyDB zs) table@Table{rows,uids} = table
+        { rows = foldr (.) id [ Map.insert k r | (k,r) <- zs ] rows
+        , uids = consume (map fst zs) uids
+        }
     apply (DeleteManyDB ks) table@Table{rows} =
         table{ rows = foldr (.) id [ Map.delete k | k <- ks ] rows }
     apply (UpdateManyDB zs) table@Table{rows} =
@@ -142,24 +143,23 @@ tableIntoDatabase = Embedding{ load, write, update = \_ b -> map (update1 b) }
     Supply
 -------------------------------------------------------------------------------}
 -- | A supply of unique IDs.
-data Supply uid = Supply
-    { now  :: !uid
-    , next :: uid -> uid
-    }
+data Supply = Supply { now  :: Int }
 
-instance Show uid => Show (Supply uid) where
+instance Show Supply where
     showsPrec d (Supply{now}) = showParen (d > app_prec) $
         showString "Supply {now = " . showsPrec 0 now . showString "} "
       where app_prec = 10
 
 -- | Fresh supply of unique IDs.
-abundance :: Enum uid => Supply uid
-abundance = Supply
-    { now = toEnum 0
-    , next = succ
-    }
+abundance :: Supply
+abundance = Supply{ now = 0 }
 
 -- | Retrieve a fresh unique ID.
-fresh :: Supply uid -> (uid, Supply uid)
-fresh supply@Supply{now=old,next} =
-    let new = next old in new `seq` (new, supply{now=new})
+fresh :: Supply -> (Int, Supply)
+fresh supply@Supply{now=old} = new `seq` (new, supply{now=new})
+  where new = succ old
+
+-- | Remove a list of unique IDs from the 'Supply' if necessary.
+consume :: [Int] -> Supply -> Supply
+consume xs supply@Supply{now=old} = new `seq` supply{now=new}
+  where new = old `max` (succ $ maximum xs)

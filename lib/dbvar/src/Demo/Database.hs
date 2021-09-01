@@ -139,7 +139,7 @@ newDBStore
     => m (Store DBIO [DeltaDB Int record] (Table record))
 newDBStore = pure $ Store
     { loadS   = do
-        liftIO . print =<< selectList all []
+        -- liftIO . print =<< selectList all []
         Just . Table.fromList . map entityVal <$> selectList all []
     , writeS  = \table -> void $ do
         deleteWhere all -- first, we delete the table from the database!
@@ -169,9 +169,7 @@ main = runSqlite ":memory:" $ do
 
     updateDBVar db $ Chain.AppendTip 2 [AddressInPool "b" 32]
     updateDBVar db $ Chain.AppendTip 3 [AddressInPool "c" 33]
-    loadS store
-
+    updateDBVar db $ Chain.CollapseNode 2
     updateDBVar db $ Chain.CollapseNode 1
 
     (liftIO . print) =<< readDBVar db
-    void $ loadS store
