@@ -117,17 +117,15 @@ instance Functor (DeltaDB key) where
 instance (key ~ Int) => Delta (DeltaDB key row) where
     type instance Base (DeltaDB key row) = Table row
     apply (InsertManyDB zs) table@Table{rows} =
+        -- FIXME: Enlarge the UID supply when inserting into the database!
         table{ rows = foldr (.) id [ Map.insert k r | (k,r) <- zs ] rows }
     apply (DeleteManyDB ks) table@Table{rows} =
         table{ rows = foldr (.) id [ Map.delete k | k <- ks ] rows }
     apply (UpdateManyDB zs) table@Table{rows} =
         table{ rows = foldr (.) id [ Map.adjust (const r) k | (k,r) <- zs ] rows }
--- FIXME: Enlarge UID supply as necessary for InsertManyDB!
 
-tableIntoDatabase :: Embedding
-    (Table row) [DeltaTable row]
-    (Table row) [DeltaDB Int row]
-tableIntoDatabase = Embedding{ load, write, update = fmap . update1 }
+tableIntoDatabase :: Embedding [DeltaTable row] [DeltaDB Int row]
+tableIntoDatabase = Embedding{ load, write, update = \_ b -> map (update1 b) }
   where
     load = Just . id
     write = id
