@@ -57,7 +57,9 @@ import Data.Table
     , Pile (..)
     )
 import Database.Persist.Delta
-    ( DBIO, newEntityStore )
+    ( newEntityStore )
+import Database.Persist.Sql
+    ( SqlPersistM )
 import Database.Persist.TH
     ( mkMigrate, mkPersist, mpsPrefixFields, persistLowerCase, share, sqlSettings )
 import GHC.Generics
@@ -66,9 +68,6 @@ import Say
     ( say, sayShow )
 
 import qualified Data.Chain as Chain
-import qualified Data.Set as Set
-import qualified Data.Table as Table
-import qualified Database.Persist as DB
 
 {-------------------------------------------------------------------------------
     Types for the database
@@ -123,9 +122,9 @@ embedIso i = withIso i $ \ab ba -> mkEmbedding Embedding'
     }
 
 type AddressStore =
-    Store DBIO (DeltaChain Node [AddressInPool]) (Chain Node [AddressInPool])
+    Store SqlPersistM (DeltaChain Node [AddressInPool]) (Chain Node [AddressInPool])
 
-newAddressStore :: DBIO AddressStore
+newAddressStore :: SqlPersistM AddressStore
 newAddressStore = embedStore addressChainIntoTable =<< newEntityStore
 
 {-------------------------------------------------------------------------------

@@ -12,7 +12,7 @@ module Database.Persist.Delta (
     -- via the "persistent" package.
     
     -- * Store
-      DBIO, newEntityStore --, newSqlStore
+    newEntityStore --, newSqlStore
     ) where
 
 import Prelude hiding (all)
@@ -38,7 +38,7 @@ import Data.Table
 import Database.Persist
     ( Filter, PersistRecordBackend, ToBackendKey, Key, Entity, selectList )
 import Database.Persist.Sql
-    ( fromSqlKey, toSqlKey, SqlBackend )
+    ( fromSqlKey, toSqlKey, SqlBackend, SqlPersistM )
 import Database.Schema
     ( IsRow, (:.), Col (..), Primary (..) )
 import Say
@@ -48,7 +48,6 @@ import Say
 import Data.IORef
     ( IORef, newIORef, readIORef, writeIORef )
 
-import qualified Database.Schema as DB
 import qualified Data.Table as Table
 import qualified Database.Persist as Persist
 
@@ -65,8 +64,7 @@ data Database m key row = Database
     , replace1    :: (key, row) -> m ()
     }
 
--- | Database monad required by the "persistent" package.
-type DBIO = ReaderT SqlBackend (NoLoggingT (ResourceT IO))
+-- | 'MonadSTM' instance for the 'SqlPersistM' monad.
 instance MonadSTM (NoLoggingT (ResourceT IO)) where
     type instance STM (NoLoggingT (ResourceT IO)) = STM IO
     atomically = liftIO . atomically
@@ -75,7 +73,7 @@ instance MonadSTM (NoLoggingT (ResourceT IO)) where
 persistDB
     :: forall row. ( PersistRecordBackend row SqlBackend
     , ToBackendKey SqlBackend row, Show row )
-    => Database DBIO Int row
+    => Database SqlPersistM Int row
 persistDB = Database
     { selectAll = map toPair <$> Persist.selectList all []
     , deleteAll = Persist.deleteWhere all
@@ -105,7 +103,7 @@ sqlDB = undefined
 -- | Construct a 'Store' from an SQL table.
 newSqlStore
     :: (MonadIO m, IsRow (row :. Col "id" Primary), Show row)
-    => m (Store DBIO [DeltaDB Int row] (Table row))
+    => m (Store SqlPersistM [DeltaDB Int row] (Table row))
 newSqlStore = newDatabaseStore sqlDB
 
 -- | Construct a 'Store' for 'Entity'.
@@ -117,7 +115,7 @@ newEntityStore
     ( PersistRecordBackend row SqlBackend
     , ToBackendKey SqlBackend row, Show row
     , MonadIO m )
-    => m (Store DBIO [DeltaDB Int row] (Table row))
+    => m (Store SqlPersistM [DeltaDB Int row] (Table row))
 newEntityStore = newDatabaseStore persistDB
 
 -- | Helper function to create a 'Store' using a 'Database' backend.
