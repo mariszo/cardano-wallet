@@ -35,7 +35,7 @@ import Data.Text
 import Database.Persist
     ( PersistValue, PersistField (..) )
 import Database.Persist.Sql
-    ( SqlType (..), PersistFieldSql (..), SqlBackend, RawSql (..) )
+    ( SqlType (..), PersistFieldSql (..), SqlPersistT, RawSql (..) )
 import GHC.TypeLits
     ( KnownSymbol, Symbol, symbolVal )
 
@@ -173,11 +173,11 @@ instance IsRow row => RawSql (Wrap row) where
 -- | Run an SQL query and return a list of rows as result.
 callSql :: (MonadIO m, IsRow row)
     => Query row
-    -> ReaderT SqlBackend m [row]
+    -> SqlPersistT m [row]
 callSql Query{stmt,params} = map unWrap <$> Persist.rawSql stmt params
 
 -- | Execute an SQL query and do not return any results
-runSql :: MonadIO m => Query () -> ReaderT SqlBackend m ()
+runSql :: MonadIO m => Query () -> SqlPersistT m ()
 runSql Query{stmt,params} = Persist.rawExecute stmt params
 
 {-------------------------------------------------------------------------------
