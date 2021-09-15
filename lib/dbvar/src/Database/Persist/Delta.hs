@@ -10,9 +10,9 @@ module Database.Persist.Delta (
     -- * Synopsis
     -- | Manipulating SQL database tables using delta encodings
     -- via the "persistent" package.
-    
+
     -- * Store
-    newEntityStore --, newSqlStore
+    newEntityStore, newSqlStore
     ) where
 
 import Prelude hiding (all)
@@ -27,29 +27,30 @@ import Control.Monad.IO.Class
     ( MonadIO, liftIO )
 import Control.Monad.Logger
     ( NoLoggingT )
-import Control.Monad.Trans.Reader
-    ( ReaderT (..) )
 import Data.DBVar
     ( Store (..) )
 import Data.Delta
     ( Delta (..) )
+import Data.Proxy
+    ( Proxy (..) )
 import Data.Table
     ( Table (..), DeltaDB (..), Pile (..) )
 import Database.Persist
-    ( Filter, PersistRecordBackend, ToBackendKey, Key, Entity, selectList )
+    ( Filter, PersistRecordBackend, ToBackendKey, Key, )
 import Database.Persist.Sql
     ( fromSqlKey, toSqlKey, SqlBackend, SqlPersistM )
 import Database.Schema
-    ( IsRow, (:.), Col (..), Primary (..) )
+    ( IsRow, (:.) (..), Col (..), Primary (..) )
 import Say
     ( say, sayShow )
 
 -- FIXME: Replace with IOSim stuff later.
 import Data.IORef
-    ( IORef, newIORef, readIORef, writeIORef )
+    ( newIORef, readIORef, writeIORef )
 
 import qualified Data.Table as Table
 import qualified Database.Persist as Persist
+import qualified Database.Schema as Sql
 
 {-------------------------------------------------------------------------------
     Database operations
@@ -58,10 +59,9 @@ import qualified Database.Persist as Persist
 data Database m key row = Database
     { selectAll   :: m [(key, row)]
     , deleteAll   :: m ()
-    , insertMany  :: [row] -> m [key]
     , repsertMany :: [(key, row)] -> m ()
-    , delete1     :: key -> m ()
-    , replace1    :: (key, row) -> m ()
+    , deleteOne   :: key -> m ()
+    , updateOne   :: (key, row) -> m ()
     }
 
 -- | 'MonadSTM' instance for the 'SqlPersistM' monad.
@@ -77,10 +77,9 @@ persistDB
 persistDB = Database
     { selectAll = map toPair <$> Persist.selectList all []
     , deleteAll = Persist.deleteWhere all
-    , insertMany = fmap (map fromKey) . Persist.insertMany
     , repsertMany = Persist.repsertMany . map (\(key,val) -> (toKey key, val))
-    , delete1 = Persist.delete . toKey
-    , replace1 = \(key,val) -> Persist.replace (toKey key) val
+    , deleteOne = Persist.delete . toKey
+    , updateOne = \(key,val) -> Persist.replace (toKey key) val
     }
   where
     all = [] :: [Filter row]
@@ -93,16 +92,41 @@ persistDB = Database
 
 -- | SQL database backend
 sqlDB
-    :: (MonadIO m, IsRow (row :. Col "id" Primary))
-    => Database m Int row
-sqlDB = undefined
+    :: forall row. (IsRow row, IsRow (row :. Col "id" Primary))
+    => Database SqlPersistM Int row
+sqlDB = Database
+    { selectAll = map toPair <$> Sql.callSql Sql.selectAll
+    , deleteAll = Sql.runSql $ Sql.Query
+        { Sql.stmt = "DELETE FROM " <> table
+        , Sql.params = []
+        }
+    , repsertMany = \zs -> void $ forM zs $
+        Sql.runSql . Sql.repsertOne . fromPair
+    , deleteOne = \key -> Sql.runSql $ Sql.Query
+        { Sql.stmt = "DELETE FROM " <> table <> " WHERE \"id\"=?"
+        , Sql.params = [Persist.toPersistValue key]
+        }
+    , updateOne = Sql.runSql . Sql.updateOne . fromPair
+    }
+  where
+    proxy = Proxy :: Proxy row
+    table = Sql.getTableName proxy
+
+    fromPair :: (Int,row) -> (row :. Col "id" Primary)
+    fromPair (key,row) = row :. (Col (Primary key) :: Col "id" Primary)
+
+    toPair :: (row :. Col "id" Primary) -> (Int,row)
+    toPair (row :. Col (Primary key)) = (key,row)
 
 {-------------------------------------------------------------------------------
     Database operations
 -------------------------------------------------------------------------------}
 -- | Construct a 'Store' from an SQL table.
+-- 
+-- The unique IDs will be stored in a column "id" at the end of
+-- each row in the database table.
 newSqlStore
-    :: (MonadIO m, IsRow (row :. Col "id" Primary), Show row)
+    :: (MonadIO m, IsRow row, IsRow (row :. Col "id" Primary), Show row)
     => m (Store SqlPersistM [DeltaDB Int row] (Table row))
 newSqlStore = newDatabaseStore sqlDB
 
@@ -141,7 +165,7 @@ newDatabaseStore db = do
                     pure $ Just table
         , writeS  = \table -> void $ do
             deleteAll db -- delete any old data in the table first
-            _ <- insertMany db $ getPile $ Table.toPile table
+            repsertMany db $ getPile $ Table.toRows table
             rememberSupply table
         , updateS = \table ds -> do
             debug $ do
@@ -155,8 +179,8 @@ newDatabaseStore db = do
     debug m = if False then m else pure ()
 
     update1 _ (InsertManyDB zs) = void $ repsertMany db zs
-    update1 _ (DeleteManyDB ks) = void $ forM ks $ delete1 db
-    update1 _ (UpdateManyDB zs) = void $ forM zs $ replace1 db
+    update1 _ (DeleteManyDB ks) = void $ forM ks $ deleteOne db
+    update1 _ (UpdateManyDB zs) = void $ forM zs $ updateOne db
 
 {- Note [Unique ID supply in newDBStore]
 
