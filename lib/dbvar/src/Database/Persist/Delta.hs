@@ -96,16 +96,10 @@ sqlDB
     => Database SqlPersistM Int row
 sqlDB = Database
     { selectAll = map toPair <$> Sql.callSql Sql.selectAll
-    , deleteAll = Sql.runSql $ Sql.Query
-        { Sql.stmt = "DELETE FROM " <> table
-        , Sql.params = []
-        }
+    , deleteAll = Sql.runSql $ Sql.deleteAll proxy
     , repsertMany = \zs -> void $ forM zs $
         Sql.runSql . Sql.repsertOne . fromPair
-    , deleteOne = \key -> Sql.runSql $ Sql.Query
-        { Sql.stmt = "DELETE FROM " <> table <> " WHERE \"id\"=?"
-        , Sql.params = [Persist.toPersistValue key]
-        }
+    , deleteOne = Sql.runSql . Sql.deleteOne proxy . Col . Primary
     , updateOne = Sql.runSql . Sql.updateOne . fromPair
     }
   where

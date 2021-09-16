@@ -20,8 +20,8 @@ module Database.Schema (
     , IsRow (..)
 
     -- * SQL Queries
-    , Query (..), callSql, runSql
-    , createTable, selectAll, insertOne, repsertOne, updateOne
+    , Query, callSql, runSql
+    , createTable, selectAll, insertOne, repsertOne, updateOne, deleteAll, deleteOne
     ) where
 
 import Prelude
@@ -175,15 +175,15 @@ callSql :: (MonadIO m, IsRow row)
     -> SqlPersistT m [row]
 callSql Query{stmt,params} = map unWrap <$> Persist.rawSql stmt params
 
--- | Execute an SQL query and do not return any results
+-- | Execute an SQL query, but do not return any results
 runSql :: MonadIO m => Query () -> SqlPersistT m ()
 runSql Query{stmt,params} = Persist.rawExecute stmt params
 
 {-------------------------------------------------------------------------------
     SQL queries
 -------------------------------------------------------------------------------}
--- | An SQL query with parameters and result type @a@.
-data Query a = Query
+-- | An SQL query that returns a list of values of type @row@.
+data Query row = Query
     { stmt :: Text
     -- ^ SQL statement containing placeholders \"?\" which are
     -- replaced by the parameters
@@ -191,6 +191,11 @@ data Query a = Query
     -- ^ Parameters to insert into the SQL statement.
     } deriving (Eq, Show)
 
+-- | Escape a column or table name.
+--
+-- FIXME: Use a newtype for more type safety.
+-- 'Query' used to be this newtype, but that has changed
+-- due to the 'params' field.
 escape :: Text -> Text
 escape s = "\"" <> s <> "\""
 
@@ -199,23 +204,30 @@ mkTuple :: [Text] -> Text
 mkTuple xs = "(" <> T.intercalate ", " xs <> ")"
 
 -- | Create a database table that can store the given rows.
---
--- FIXME: We need to escape the column names!
 createTable :: IsRow row => Proxy row -> Query ()
 createTable proxy = Query
     { stmt =
         "CREATE TABLE IF NOT EXISTS " <> table
-        <> " " <> mkTuple columns <> ";"
+        <> " " <> mkTuple cols <> ";"
     , params = []
     }
   where
     table = escape $ getTableName proxy
-    columns = zipWith (\name typ -> escape name <> " " <> escapeSqlType typ)
+    cols  = zipWith (\name typ -> escape name <> " " <> escapeSqlType typ)
         (getColNames proxy) (getSqlTypes proxy)
 
+-- | Select all rows from the table.
+selectAll :: forall row. IsRow row => Query row
+selectAll = Query
+    { stmt = "SELECT " <> T.intercalate "," cols <> " FROM " <> table <> ";"
+    , params = []
+    }
+  where
+    proxy = Proxy :: Proxy row
+    table = escape $ getTableName proxy
+    cols  = map escape $ getColNames proxy
+
 -- | Insert a single row into the corresponding table.
---
--- FIXME: We need to escape the column names!
 insertOne :: forall row. IsRow row => row -> Query ()
 insertOne row = Query
     { stmt =
@@ -245,10 +257,11 @@ repsertOne row = Query
     table = escape $ getTableName proxy
     cols  = map escape $ getColNames proxy
 
+-- | Update one row with a given \"id\" column in a database table.
 updateOne :: forall row. IsRow row
     => (row :. Col "id" Primary) -> Query ()
 updateOne row= Query
-    { stmt = "UPDATE " <> table <> " SET " <> sets <> " WHERE id=?"
+    { stmt = "UPDATE " <> table <> " SET " <> sets <> " WHERE \"id\"=?;"
     , params = toSqlValues row
     }
   where
@@ -257,13 +270,20 @@ updateOne row= Query
     cols  = map escape $ getColNames proxy
     sets  = T.intercalate ", " [col <> "=?" | col <- cols]
 
--- | Select all rows from the table.
-selectAll :: forall row. IsRow row => Query row
-selectAll = Query
-    { stmt = "SELECT * FROM " <> table <> ";"
+-- | Delete one row with a given \"id\" column in a database table.
+deleteOne :: forall row. IsRow row => Proxy row -> Col "id" Primary -> Query ()
+deleteOne proxy (Col key) = Query
+    { stmt = "DELETE FROM " <> table <> " WHERE \"id\"=?;"
+    , params = [Persist.toPersistValue key]
+    }
+  where
+    table = escape $ getTableName proxy
+
+-- | Delete all rows in a database table
+deleteAll :: forall row. IsRow row => Proxy row -> Query ()
+deleteAll proxy = Query
+    { stmt = "DELETE FROM " <> table
     , params = []
     }
   where
-    proxy = Proxy :: Proxy row
     table = escape $ getTableName proxy
-
