@@ -29,6 +29,7 @@ mkShell rec {
     haskell-build-tools.cabal-install
     nix
     pkgconfig
+    gnutar
   ]
   ++ lib.optional (!stdenv.isDarwin) git
   ++ (with walletPackages; [
@@ -38,10 +39,12 @@ mkShell rec {
   ++ lib.optional withCabalCache haskell-build-tools.cabal-cache;
 
   libs = [
+    xz
     zlib
+    bzip2
+    lzma
     gmp
     ncurses
-    lzma
     openssl
     libsodium-vrf
     pcre
