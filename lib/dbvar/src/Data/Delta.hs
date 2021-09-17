@@ -70,6 +70,11 @@ instance Delta (Replace a) where
     type instance Base (Replace a) = a
     apply (Replace a) _ = a
 
+-- | Combine replacements. The first argument takes precedence.
+-- In this way, 'apply' becomes a 'Semigroup' morphism.
+instance Semigroup (Replace a) where
+    r <> _ = r
+
 -- | A list of deltas can be applied like a single delta.
 -- This overloading of 'apply' is very convenient.
 --
