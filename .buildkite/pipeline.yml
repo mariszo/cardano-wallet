@@ -25,7 +25,7 @@ steps:
 
   - label: 'Stack Rebuild'
     commands:
-      - "export PATH=$(nix-build '<nixpkgs>' -A bash -o result-bash)/bin:$PATH"
+      - "export PATH=$(nix-build ./nix/default.nix -A pkgs.bash -o result-bash)/bin:$PATH"
       - "which bash"
       - "rm -rf $TESTS_LOGDIR && mkdir -p $TESTS_LOGDIR"
       - "nix-build .buildkite/default.nix -o sr"
@@ -39,8 +39,10 @@ steps:
 
   - label: 'Check Cabal Configure'
     commands: |
-      export PATH=$(nix-build '<nixpkgs>' -A bash -o result-bash)/bin:$PATH
+      export PATH=$(nix-build ./nix/default.nix -A pkgs.bash -o result-bash)/bin:$PATH
       which bash
+      ldd `which bash`
+      bash --version
       nix-shell --pure nix/cabal-shell.nix --run "scripts/buildkite/cabal-ci.sh configure"
     agents:
       system: x86_64-linux
