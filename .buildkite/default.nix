@@ -5,7 +5,7 @@ with pkgs;
 
 let
   buildTools = [
-    gnused gnugrep coreutils git nix gnumake
+    bash gnused gnugrep coreutils git nix gnumake
     gnutar gzip lz4 bzip2 xz
     stack haskell-build-tools.weeder
   ];

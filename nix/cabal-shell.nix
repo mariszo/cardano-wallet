@@ -25,6 +25,7 @@ mkShell rec {
     else haskell-nix.compiler.${ghcVersion};
 
   tools = [
+    bash
     ghc
     haskell-build-tools.cabal-install
     nix
