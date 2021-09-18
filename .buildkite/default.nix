@@ -5,8 +5,8 @@ with pkgs;
 
 let
   buildTools = [
-    bash gnused gnugrep coreutils git nix gnumake
-    gnutar gzip lz4 bzip2 xz
+    bash coreutils nix curl git
+    gnumake gnused gnugrep gnutar gzip lz4 bzip2 xz
     stack haskell-build-tools.weeder
   ];
   libs = ps: with ps; [turtle safe transformers extra async digest];

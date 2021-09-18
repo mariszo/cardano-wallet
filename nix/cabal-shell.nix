@@ -31,6 +31,7 @@ mkShell rec {
     nix
     pkgconfig
     gnutar
+    curl
   ]
   ++ lib.optional (!stdenv.isDarwin) git
   ++ (with walletPackages; [
