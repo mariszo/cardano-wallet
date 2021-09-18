@@ -24,7 +24,9 @@ steps:
     if: 'build.branch == "bors/staging"'
 
   - label: 'Stack Rebuild'
-    command:
+    commands:
+      - "export PATH=$(nix-build '<nixpkgs>' -A bash -o result-bash)/bin:$PATH"
+      - "which bash"
       - "rm -rf $TESTS_LOGDIR && mkdir -p $TESTS_LOGDIR"
       - "nix-build .buildkite/default.nix -o sr"
       - "./sr/bin/rebuild --build-dir=$BUILD_DIR --cache-dir=$CACHE_DIR"
@@ -36,7 +38,10 @@ steps:
       system: x86_64-linux
 
   - label: 'Check Cabal Configure'
-    command: 'nix-shell --pure nix/cabal-shell.nix --run "scripts/buildkite/cabal-ci.sh configure"'
+    commands: |
+      export PATH=$(nix-build '<nixpkgs>' -A bash -o result-bash)/bin:$PATH
+      which bash
+      nix-shell --pure nix/cabal-shell.nix --run "scripts/buildkite/cabal-ci.sh configure"
     agents:
       system: x86_64-linux
 
