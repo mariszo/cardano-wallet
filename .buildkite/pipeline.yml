@@ -52,61 +52,10 @@ steps:
     agents:
       system: x86_64-linux
 
-  - label: 'Check auto-generated Nix'
-    key: nix
-    commands:
-      - './nix/regenerate.sh --cache /dev/null'
-      - 'nix-build ./nix -A iohkNix.checkStackProject -o check-stack-project.sh && ./check-stack-project.sh'
-    agents:
-      system: x86_64-linux
-
   - label: 'Check Cabal Configure (Haskell.nix shellFor)'
-    depends_on: nix
     command:
       - 'nix-shell --run "echo --- Cabal update ; cabal update"'
       - 'nix-shell --run "echo +++ Cabal configure ; cabal configure --enable-tests --enable-benchmarks"'
       - 'nix-shell --run "echo +++ Cabal configure -frelease ; cabal configure -frelease --enable-tests --enable-benchmarks"'
-    agents:
-      system: x86_64-linux
-
-  - label: 'Check Stylish Haskell'
-    depends_on: nix
-    command: 'nix-shell --run .buildkite/check-stylish.sh'
-    agents:
-      system: x86_64-linux
-
-  - label: 'HLint'
-    depends_on: nix
-    command: 'nix-shell --run "echo +++ HLint ; hlint lib"'
-    agents:
-      system: x86_64-linux
-
-  - label: 'Validate OpenAPI Specification'
-    depends_on: nix
-    command: 'nix-shell --run "echo +++ openapi-spec-validator ; openapi-spec-validator --schema 3.0.0 specifications/api/swagger.yaml"'
-    agents:
-      system: x86_64-linux
-
-  - label: 'Docker Image'
-    depends_on: nix
-    command:
-      - "nix-build .buildkite/docker-build-push.nix --argstr dockerHubRepoName inputoutput/cardano-wallet -o docker-build-push"
-      - "./docker-build-push"
-    agents:
-      system: x86_64-linux
-    soft_fail:
-      - exit_status: '*'
-
-  - label: 'TODO list'
-    depends_on: nix
-    command: 'nix-shell --run scripts/todo-list.sh'
-    agents:
-      system: x86_64-linux
-
-  - label: 'Lint bash shell scripts'
-    depends_on: nix
-    commands:
-      - 'echo +++ Shellcheck'
-      - './scripts/shellcheck.sh'
     agents:
       system: x86_64-linux
