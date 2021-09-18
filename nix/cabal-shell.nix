@@ -64,7 +64,7 @@ mkShell rec {
   preferLocalBuild = true;
 
   # Ensure that libz.so and other libraries are available to TH splices.
-  LD_LIBRARY_PATH = lib.makeLibraryPath libs;
+  # LD_LIBRARY_PATH = lib.makeLibraryPath libs;
 
   # Force a UTF-8 locale because many Haskell programs and tests assume this.
   LANG = "en_US.UTF-8";
