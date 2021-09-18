@@ -44,9 +44,9 @@ steps:
       ldd `which bash`
       bash --version
       echo "+++ test 1"
-      nix-shell --pure nix/cabal-shell.nix --run "echo test1"
+      nix-shell --pure nix/cabal-shell.nix --run "echo test1" || true
       echo "+++ test 2"
-      nix-shell --pure nix/cabal-shell.nix --run "$(pwd)/result-bash/bin/bash scripts/buildkite/cabal-ci.sh configure"
+      nix-shell --pure nix/cabal-shell.nix --run "$(pwd)/result-bash/bin/bash scripts/buildkite/cabal-ci.sh configure" || true
       echo "+++ test 3"
       nix-shell --pure nix/cabal-shell.nix --run "scripts/buildkite/cabal-ci.sh configure"
     agents:
