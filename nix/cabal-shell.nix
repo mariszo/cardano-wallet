@@ -50,7 +50,7 @@ mkShell rec {
     libsodium-vrf
     pcre
   ]
-  ++ lib.optional (stdenv.hostPlatform.libc == "glibc") glibcLocales
+  ++ lib.optionals (stdenv.hostPlatform.libc == "glibc") [ glibc glibcLocales ]
   ++ lib.optional stdenv.isLinux systemd.dev
   ++ lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
     Cocoa CoreServices libcxx libiconv
@@ -64,7 +64,11 @@ mkShell rec {
   preferLocalBuild = true;
 
   # Ensure that libz.so and other libraries are available to TH splices.
-  # LD_LIBRARY_PATH = lib.makeLibraryPath libs;
+  SHELL_LD_LIBRARY_PATH = lib.makeLibraryPath libs;
+  shellHook = ''
+    echo "Running shellHook"
+    export LD_LIBRARY_PATH=$SHELL_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
+  '';
 
   # Force a UTF-8 locale because many Haskell programs and tests assume this.
   LANG = "en_US.UTF-8";

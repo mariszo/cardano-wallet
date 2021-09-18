@@ -43,6 +43,11 @@ steps:
       which bash
       ldd `which bash`
       bash --version
+      echo "+++ test 1"
+      nix-shell --pure nix/cabal-shell.nix --run "echo test1"
+      echo "+++ test 2"
+      nix-shell --pure nix/cabal-shell.nix --run "$(pwd)/result-bash/bin/bash scripts/buildkite/cabal-ci.sh configure"
+      echo "+++ test 3"
       nix-shell --pure nix/cabal-shell.nix --run "scripts/buildkite/cabal-ci.sh configure"
     agents:
       system: x86_64-linux
