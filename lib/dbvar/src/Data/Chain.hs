@@ -37,18 +37,13 @@ import Data.List
     ( unfoldr )
 import Data.Map.Strict
     ( Map )
-import Data.Maybe
-    ( fromMaybe )
 import Data.Semigroupoid
     ( o )
-import Data.Set
-    ( Set )
 import Data.Table
     ( Table , DeltaTable (..), Pile (..) )
 
 import qualified Data.Table as Table
 import qualified Data.Map as Map
-import qualified Data.Set as Set
 
 {-------------------------------------------------------------------------------
     Chain
@@ -247,7 +242,7 @@ addEdge Edge{from,to,via} chain@Chain{next,prev,tip} =
 -- Importantly, we may not assume that the table stores
 -- the rows in any particular order.
 chainIntoTable
-    :: (Ord node, Ord e, Semigroup edge)
+    :: (Ord node, Semigroup edge)
     => (edge -> Pile e) -> (Pile e -> edge)
     -> Embedding (DeltaChain node edge) [DeltaTable (Edge node e)]
 chainIntoTable toPile fromPile = mkEmbedding Embedding'{load,write,update}

@@ -32,7 +32,6 @@ module Data.Delta (
 
 import Prelude
 
-import Control.Monad ((>=>))
 import Data.Kind ( Type )
 import Data.Semigroupoid ( Semigroupoid (..) )
 import Data.Set ( Set )
@@ -141,7 +140,7 @@ mkDeltaSet new old =
 --
 -- In the result list, the set of @a@ appearing as 'Insert'@ a@
 -- is /disjoint/ from the set of @a@ appearing as 'Delete'@ a@.
-deltaSetToList :: Ord a => DeltaSet a -> [DeltaSet1 a]
+deltaSetToList :: DeltaSet a -> [DeltaSet1 a]
 deltaSetToList DeltaSet{inserts,deletes} =
     map Insert (Set.toList inserts) <> map Delete (Set.toList deletes)
 
@@ -246,7 +245,7 @@ data Embedding da db = Embedding
     }
 
 -- | Construct 'Embedding' with efficient composition
-mkEmbedding :: (Delta da, Delta db) => Embedding' da db -> Embedding da db
+mkEmbedding :: Embedding' da db -> Embedding da db
 mkEmbedding Embedding'{load,write,update} = Embedding
     { inject = start . write
     , project = \b -> (\a -> (a, start b)) <$> load b
@@ -297,16 +296,16 @@ pair (Embedding inject1 project1) (Embedding inject2 project2) =
 
 -- | Lift a sequence of updates through an 'Embedding'.
 liftUpdates
-    :: (Delta da, Delta da)
+    :: Delta da
     => Embedding da db
     -> [da] -- ^ List of deltas to apply. The 'head' is applied /last/.
     -> Base da -- ^ Base value to apply the deltas to.
     -> (Base db, [db])
     -- ^ (Final base value, updates that were applied ('head' is /last/)).
-liftUpdates Embedding{inject} das a =
-    let (b,dbs) = go (inject a) a (reverse das) in (b, reverse dbs)
+liftUpdates Embedding{inject} das0 a0 =
+    let (b,dbs) = go (inject a0) a0 (reverse das0) in (b, reverse dbs)
   where
-    go machine1 !a [] = (state_ machine1, [])
+    go machine1 _  [] = (state_ machine1, [])
     go machine1 !a (da:das) = (b,db:dbs)
       where
         (b ,dbs) = go machine2 (apply da a) das

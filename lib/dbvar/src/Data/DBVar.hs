@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-redundant-constraints#-}
+-- We intentionally specify more constraints than necessary for some exports.
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -25,7 +27,6 @@ module Data.DBVar (
 
 import Prelude
 
-import Control.Monad ( void )
 import Control.Applicative
     ( liftA2 )
 import Control.Monad.Class.MonadSTM
@@ -222,7 +223,7 @@ cachedStore Store{loadS,writeS,updateS} = do
             updateS old delta
         }
 
-embedStore :: (MonadSTM m, Delta da, Delta db)
+embedStore :: (MonadSTM m, Delta da)
     => Embedding da db -> Store m db -> m (Store m da)
 embedStore embed bstore = do
     machine <- newTVarIO Nothing
@@ -265,8 +266,7 @@ embedStore' Embedding'{load,write,update} Store{loadS,writeS,updateS} = Store
     }
 
 -- | Combine two 'Stores' into a store for pairs.
-pairStores :: (Monad m, Delta da, Delta db)
-    => Store m da -> Store m db -> Store m (da, db)
+pairStores :: Monad m => Store m da -> Store m db -> Store m (da, db)
 pairStores sa sb = Store
     { loadS = liftA2 (,) <$> loadS sa <*> loadS sb
     , writeS = \(a,b) -> writeS sa a >> writeS sb b
