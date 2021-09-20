@@ -10,7 +10,7 @@ module Data.Chain (
     , member, ChainContext, lookup
     --, singleton
     , fromEdge, fromEdges
-    , edges, toEdges, summary
+    , edges, nodes, toEdges, summary
 
     -- * DeltaChain
     , DeltaChain (..)
@@ -128,6 +128,16 @@ edges Chain{prev,next,tip} = unfoldr backwards tip
         before <- join $ Map.lookup now prev
         (e,_)  <- Map.lookup before next
         pure (e,before)
+
+-- | List all nodes in the 'Chain'.
+-- The tip is listed /first/.
+nodes :: Ord node => Chain node edge -> [node]
+nodes Chain{prev,next,tip} = tip : unfoldr backwards tip
+  where
+    backwards now = do
+        before <- join $ Map.lookup now prev
+        (_,_)  <- Map.lookup before next
+        pure (before,before)
 
 -- | Convert a 'Chain' into a list of 'Edge'.
 toEdges :: Chain node edge -> [Edge node edge]

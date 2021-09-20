@@ -23,11 +23,11 @@ module Data.Delta (
     , Embedding
     , module Data.Semigroupoid
     , Embedding' (..), mkEmbedding
-    , fromEmbedding, liftUpdates
+    , fromEmbedding, pair, liftUpdates
     , replaceFromApply
 
     -- * Internal
-    , inject, project, Machine (..), fromState
+    , inject, project, Machine (..), pairMachine, fromState,
     ) where
 
 import Prelude
@@ -91,6 +91,17 @@ instance Delta delta => Delta [delta] where
 instance (Delta d1, Delta d2) => Delta (d1,d2) where
     type instance Base (d1, d2) = (Base d1, Base d2)
     apply (d1,d2) (a1,a2) = (apply d1 a1, apply d2 a2)
+
+-- | A triple of deltas represents a delta for a triple.
+instance (Delta d1, Delta d2, Delta d3) => Delta (d1,d2,d3) where
+    type instance Base (d1,d2,d3) = (Base d1,Base d2,Base d3)
+    apply (d1,d2,d3) (a1,a2,a3) = (apply d1 a1, apply d2 a2, apply d3 a3)
+
+-- | A 4-tuple of deltas represents a delta for a 4-tuple.
+instance (Delta d1, Delta d2, Delta d3, Delta d4) => Delta (d1,d2,d3,d4) where
+    type instance Base (d1,d2,d3,d4) = (Base d1,Base d2,Base d3,Base d4)
+    apply (d1,d2,d3,d4) (a1,a2,a3,a4) =
+        (apply d1 a1, apply d2 a2, apply d3 a3, apply d4 a4)
 
 -- | Delta encoding for lists where a list of elements is prepended.
 data DeltaList a = Append [a]
@@ -272,6 +283,18 @@ instance Semigroupoid Embedding where
             (a, mab) <- project1 b
             pure (a, mbc `o` mab)
 
+-- | A pair of 'Embedding's gives an embedding of pairs.
+pair :: Embedding da1 db1 -> Embedding da2 db2 -> Embedding (da1,da2) (db1,db2)
+pair (Embedding inject1 project1) (Embedding inject2 project2) =
+    Embedding{inject,project}
+  where
+    inject (a1,a2) = pairMachine (inject1 a1) (inject2 a2)
+    project (b1,b2) = do
+        (a1, m1) <- project1 b1
+        (a2, m2) <- project2 b2
+        pure ((a1,a2), pairMachine m1 m2)
+
+
 -- | Lift a sequence of updates through an 'Embedding'.
 liftUpdates
     :: (Delta da, Delta da)
@@ -331,6 +354,15 @@ instance Semigroupoid Machine where
         case fab ada of
             (db, mab) -> case fbc (b,db) of
                 (dc, mbc) -> (dc, mbc `o` mab)
+
+-- | Pair two 'Machine'.
+pairMachine
+    :: Machine da1 db1 -> Machine da2 db2 -> Machine (da1,da2) (db1,db2)
+pairMachine (Machine s1 step1) (Machine s2 step2) =
+    Machine (s1,s2) $ \((a1,a2), (da1,da2)) ->
+        let (db1, m1) = step1 (a1,da1)
+            (db2, m2) = step2 (a2,da2)
+        in  ((db1,db2), pairMachine m1 m2)
 
 -- | Create a 'Machine' from a specific state 's',
 -- and the built-in state 'Base'@ db@.
