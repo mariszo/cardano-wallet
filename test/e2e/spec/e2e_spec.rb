@@ -57,6 +57,25 @@ RSpec.describe "Cardano Wallet E2E tests", :e2e => true do
     end
   end
 
+  describe "E2E Plutus" do
+    it "I can balance tx" do
+      scripts = Dir["../../lib/shelley/test/data/plutus/*.json"]
+      testnet_address = SHELLEY.addresses.list(@wid)[0]['id']
+      scripts.each do |script|
+        payload = JSON.parse(File.read(script))
+        # change all addresses in example payloads to testnet addresses
+        payload['inputs'].map {|i| i['txOut']['address'] = testnet_address}
+        res = SHELLEY.transactions.balance(@wid, payload)
+        if res.code != 501
+          puts "#{File.basename script} => #{res}"
+        end
+
+        # expect(res).to be_correct_and_respond 501
+      end
+
+    end
+  end
+
   describe "E2E Shared" do
     it "I can receive transaction to shared wallet" do
       asset_quantity = 1
