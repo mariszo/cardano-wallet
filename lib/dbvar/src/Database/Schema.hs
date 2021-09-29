@@ -22,6 +22,9 @@ module Database.Schema (
     -- * SQL Queries
     , Query, callSql, runSql
     , createTable, selectAll, insertOne, repsertOne, updateOne, deleteAll, deleteOne
+    
+    -- * Testing
+    , testPerson
     ) where
 
 import Prelude

@@ -19,6 +19,9 @@ module Data.Chain (
 
     -- * Edge
     , Edge (..), flattenEdge
+
+    -- * Testing
+    , testChain
     ) where
 
 import Prelude hiding (lookup)
@@ -276,8 +279,8 @@ chainIntoTable toPile fromPile = mkEmbedding Embedding'{load,write,update}
 {-------------------------------------------------------------------------------
     Tests
 -------------------------------------------------------------------------------}
-test :: (Table (Edge Int Char), [[Table.DeltaDB Int (Edge Int Char)]])
-test = liftUpdates (Table.tableIntoDatabase `o` chainIntoTable Pile getPile)
+testChain :: (Table (Edge Int Char), [[Table.DeltaDB Int (Edge Int Char)]])
+testChain = liftUpdates (Table.tableIntoDatabase `o` chainIntoTable Pile getPile)
     [CollapseNode 1, CollapseNode 2, AppendTip 3 "c", AppendTip 2 "b"]
     $ fromEdge Edge{from=0,to=1,via="a"}
 

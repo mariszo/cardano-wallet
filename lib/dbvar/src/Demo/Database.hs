@@ -17,10 +17,20 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Demo.Database where
 
 import Prelude
 
+import Conduit
+    ( ResourceT )
+import Control.Monad.Class.MonadSTM
+    ( MonadSTM (..) )
+import Control.Monad.IO.Class
+    ( liftIO )
+import Control.Monad.Logger
+    ( NoLoggingT )
 import Data.Chain
     ( DeltaChain (..)
     , Edge (..)
@@ -124,6 +134,11 @@ newStoreAddress = embedStore addressChainIntoTable =<< newEntityStore
 {-------------------------------------------------------------------------------
     Store using SQL row types
 -------------------------------------------------------------------------------}
+-- | 'MonadSTM' instance for the 'SqlPersistM' monad.
+instance MonadSTM (NoLoggingT (ResourceT IO)) where
+    type instance STM (NoLoggingT (ResourceT IO)) = STM IO
+    atomically = liftIO . atomically
+
 newStoreAddressSql :: SqlPersistM StoreAddress
 newStoreAddressSql = do
     Sql.runSql $ Sql.createTable (Proxy :: Proxy (AddressRow :. Col "id" Primary))

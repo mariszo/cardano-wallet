@@ -17,16 +17,10 @@ module Database.Persist.Delta (
 
 import Prelude hiding (all)
 
-import Conduit
-    ( ResourceT )
 import Control.Monad
     ( forM, void )
-import Control.Monad.Class.MonadSTM
-    ( MonadSTM (..) )
 import Control.Monad.IO.Class
     ( MonadIO, liftIO )
-import Control.Monad.Logger
-    ( NoLoggingT )
 import Data.DBVar
     ( Store (..) )
 import Data.Delta
@@ -64,15 +58,10 @@ data Database m key row = Database
     , updateOne   :: (key, row) -> m ()
     }
 
--- | 'MonadSTM' instance for the 'SqlPersistM' monad.
-instance MonadSTM (NoLoggingT (ResourceT IO)) where
-    type instance STM (NoLoggingT (ResourceT IO)) = STM IO
-    atomically = liftIO . atomically
-
 -- | Database table for 'Entity'.
 persistDB
     :: forall row. ( PersistRecordBackend row SqlBackend
-    , ToBackendKey SqlBackend row, Show row )
+    , ToBackendKey SqlBackend row )
     => Database SqlPersistM Int row
 persistDB = Database
     { selectAll = map toPair <$> Persist.selectList all []
@@ -104,7 +93,6 @@ sqlDB = Database
     }
   where
     proxy = Proxy :: Proxy row
-    table = Sql.getTableName proxy
 
     fromPair :: (Int,row) -> (row :. Col "id" Primary)
     fromPair (key,row) = row :. (Col (Primary key) :: Col "id" Primary)
