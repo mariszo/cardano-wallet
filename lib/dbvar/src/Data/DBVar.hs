@@ -34,7 +34,6 @@ import Control.Applicative
     ( liftA2 )
 import Control.Monad.Class.MonadSTM
     ( MonadSTM
-    -- , TVar
     , atomically
     , modifyTVar'
     , newTVarIO
@@ -43,13 +42,7 @@ import Control.Monad.Class.MonadSTM
     , writeTVar
     )
 import Data.Delta
-    ( Delta (..)
-    , Embedding' (..)
-    , Embedding
-    , inject
-    , project
-    , Machine (..)
-    )
+    ( Delta (..), Embedding, Embedding' (..), Machine (..), inject, project )
 
 {-------------------------------------------------------------------------------
     DBVar

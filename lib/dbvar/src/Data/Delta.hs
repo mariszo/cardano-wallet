@@ -32,9 +32,12 @@ module Data.Delta (
 
 import Prelude
 
-import Data.Kind ( Type )
-import Data.Semigroupoid ( Semigroupoid (..) )
-import Data.Set ( Set )
+import Data.Kind
+    ( Type )
+import Data.Semigroupoid
+    ( Semigroupoid (..) )
+import Data.Set
+    ( Set )
 
 import qualified Data.Set as Set
 
@@ -58,7 +61,7 @@ data NoChange a = NoChange
     deriving (Eq, Ord, Show)
 
 instance Delta (NoChange a) where
-    type instance Base (NoChange a) = a
+    type Base (NoChange a) = a
     apply _ a = a
 
 -- | Trivial delta encoding for the type @a@ that replaces the value wholesale.
@@ -66,7 +69,7 @@ newtype Replace a = Replace a
     deriving (Eq, Ord, Show)
 
 instance Delta (Replace a) where
-    type instance Base (Replace a) = a
+    type Base (Replace a) = a
     apply (Replace a) _ = a
 
 -- | Combine replacements. The first argument takes precedence.
@@ -83,22 +86,22 @@ instance Semigroup (Replace a) where
 -- > apply []         = id
 -- > apply (d1 <> d2) = apply d1 . apply d2
 instance Delta delta => Delta [delta] where
-    type instance Base [delta] = Base delta
+    type Base [delta] = Base delta
     apply = foldr (.) id . map apply
 
 -- | A pair of deltas represents a delta for a pair.
 instance (Delta d1, Delta d2) => Delta (d1,d2) where
-    type instance Base (d1, d2) = (Base d1, Base d2)
+    type Base (d1, d2) = (Base d1, Base d2)
     apply (d1,d2) (a1,a2) = (apply d1 a1, apply d2 a2)
 
 -- | A triple of deltas represents a delta for a triple.
 instance (Delta d1, Delta d2, Delta d3) => Delta (d1,d2,d3) where
-    type instance Base (d1,d2,d3) = (Base d1,Base d2,Base d3)
+    type Base (d1,d2,d3) = (Base d1,Base d2,Base d3)
     apply (d1,d2,d3) (a1,a2,a3) = (apply d1 a1, apply d2 a2, apply d3 a3)
 
 -- | A 4-tuple of deltas represents a delta for a 4-tuple.
 instance (Delta d1, Delta d2, Delta d3, Delta d4) => Delta (d1,d2,d3,d4) where
-    type instance Base (d1,d2,d3,d4) = (Base d1,Base d2,Base d3,Base d4)
+    type Base (d1,d2,d3,d4) = (Base d1,Base d2,Base d3,Base d4)
     apply (d1,d2,d3,d4) (a1,a2,a3,a4) =
         (apply d1 a1, apply d2 a2, apply d3 a3, apply d4 a4)
 
@@ -107,7 +110,7 @@ data DeltaList a = Append [a]
     deriving (Eq, Ord, Show)
 
 instance Delta (DeltaList a) where
-    type instance Base (DeltaList a) = [a]
+    type Base (DeltaList a) = [a]
     apply (Append xs) ys = xs ++ ys
 
 -- | Delta encoding for 'Set' where a single element is deleted or added.
@@ -115,7 +118,7 @@ data DeltaSet1 a = Insert a | Delete a
     deriving (Eq, Ord, Show)
 
 instance Ord a => Delta (DeltaSet1 a) where
-    type instance Base (DeltaSet1 a) = Set a
+    type Base (DeltaSet1 a) = Set a
     apply (Insert a) = Set.insert a
     apply (Delete a) = Set.delete a
 
@@ -128,7 +131,7 @@ data DeltaSet a = DeltaSet
 -- INVARIANT: The two sets are always disjoint.
 
 instance Ord a => Delta (DeltaSet a) where
-    type instance Base (DeltaSet a) = Set a
+    type Base (DeltaSet a) = Set a
     apply (DeltaSet i d) x = i `Set.union` (x `Set.difference` d)
 
 -- | Delta to get from the second argument to the first argument.

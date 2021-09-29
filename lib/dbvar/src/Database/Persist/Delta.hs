@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -15,7 +15,8 @@ module Database.Persist.Delta (
     newEntityStore, newSqlStore
     ) where
 
-import Prelude hiding (all)
+import Prelude hiding
+    ( all )
 
 import Control.Monad
     ( forM, void )
@@ -28,13 +29,13 @@ import Data.Delta
 import Data.Proxy
     ( Proxy (..) )
 import Data.Table
-    ( Table (..), DeltaDB (..), Pile (..) )
+    ( DeltaDB (..), Pile (..), Table (..) )
 import Database.Persist
-    ( Filter, PersistRecordBackend, ToBackendKey, Key, )
+    ( Filter, Key, PersistRecordBackend, ToBackendKey )
 import Database.Persist.Sql
-    ( fromSqlKey, toSqlKey, SqlBackend, SqlPersistM )
+    ( SqlBackend, SqlPersistM, fromSqlKey, toSqlKey )
 import Database.Schema
-    ( IsRow, (:.) (..), Col (..), Primary (..) )
+    ( (:.) (..), Col (..), IsRow, Primary (..) )
 import Say
     ( say, sayShow )
 

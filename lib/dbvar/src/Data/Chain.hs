@@ -24,18 +24,13 @@ module Data.Chain (
     , testChain
     ) where
 
-import Prelude hiding (lookup)
+import Prelude hiding
+    ( lookup )
 
 import Control.Monad
-    ( (<=<)
-    , guard
-    , join
-    )
+    ( guard, join, (<=<) )
 import Data.Delta
-    ( Delta (..)
-    , Embedding, Embedding' (..), mkEmbedding
-    , liftUpdates
-    )
+    ( Delta (..), Embedding, Embedding' (..), liftUpdates, mkEmbedding )
 import Data.List
     ( unfoldr )
 import Data.Map.Strict
@@ -43,10 +38,10 @@ import Data.Map.Strict
 import Data.Semigroupoid
     ( o )
 import Data.Table
-    ( Table , DeltaTable (..), Pile (..) )
+    ( DeltaTable (..), Pile (..), Table )
 
-import qualified Data.Table as Table
 import qualified Data.Map as Map
+import qualified Data.Table as Table
 
 {-------------------------------------------------------------------------------
     Chain
@@ -164,7 +159,7 @@ data DeltaChain node edge
     -- ^ See 'rollbackTo'.
 
 instance (Ord node, Semigroup edge) => Delta (DeltaChain node edge) where
-    type instance Base (DeltaChain node edge) = Chain node edge
+    type Base (DeltaChain node edge) = Chain node edge
     apply (AppendTip n e) = appendTip n e
     apply (CollapseNode n) = collapseNode n
     apply (RollbackTo n ) = rollbackTo n
