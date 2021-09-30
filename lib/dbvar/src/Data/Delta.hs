@@ -81,6 +81,11 @@ instance Delta (Replace a) where
 instance Semigroup (Replace a) where
     r <> _ = r
 
+-- | A delta can be optionally applied.
+instance Delta delta => Delta (Maybe delta) where
+    type Base (Maybe delta) = Base delta
+    apply = maybe id apply
+
 -- | A list of deltas can be applied like a single delta.
 -- This overloading of 'apply' is very convenient.
 --
