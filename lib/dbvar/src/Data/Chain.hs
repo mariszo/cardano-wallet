@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeFamilies #-}
+{- HLINT ignore "Fuse foldr/map" -}
 module Data.Chain (
     -- * Synopsis
     -- | 'Chain'@ node edge@ is a linear chain of nodes with directed
@@ -29,6 +30,8 @@ import Prelude hiding
 
 import Control.Monad
     ( guard, join, (<=<) )
+import Data.Bifunctor
+    ( first )
 import Data.Delta
     ( Delta (..), Embedding, Embedding' (..), liftUpdates, mkEmbedding )
 import Data.List
@@ -59,7 +62,7 @@ data Chain node edge = Chain
     } deriving (Eq, Show)
 
 instance Functor (Chain node) where
-    fmap f chain = chain{ next = fmap (\(e,n) -> (f e, n)) (next chain) }
+    fmap f chain = chain{ next = fmap (first f) (next chain) }
 
 -- | Test whether a node is contained in the chain.
 member :: Ord node => node -> Chain node edge -> Bool
@@ -246,8 +249,8 @@ chainIntoTable
 chainIntoTable toPile fromPile = mkEmbedding Embedding'{load,write,update}
   where
     load = fmap (fmap $ fromPile . Pile) . fromEdges . getPile . Table.toPile
-    write = Table.fromList . concatMap flattenEdge
-        . map (fmap (getPile . toPile)) . toEdges
+    write = Table.fromList
+        . concatMap (flattenEdge . fmap (getPile . toPile)) . toEdges
 
     update Chain{tip=from} _ (AppendTip to vias) =
         [InsertMany [Edge{from,to,via} | via <- getPile $ toPile vias]]

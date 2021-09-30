@@ -2,6 +2,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TupleSections #-}
+{- HLINT ignore "Use newtype instead of data" -}
 module Data.Delta (
     -- * Synopsis
     -- | Delta encodings.
@@ -34,6 +36,8 @@ import Prelude
 
 import Data.Kind
     ( Type )
+import Data.Maybe
+    ( fromMaybe )
 import Data.Semigroupoid
     ( Semigroupoid (..) )
 import Data.Set
@@ -256,7 +260,7 @@ data Embedding da db = Embedding
 mkEmbedding :: Embedding' da db -> Embedding da db
 mkEmbedding Embedding'{load,write,update} = Embedding
     { inject = start . write
-    , project = \b -> (\a -> (a, start b)) <$> load b
+    , project = \b -> (, start b) <$> load b
     }
   where
     start b = fromState step (b,())
@@ -269,12 +273,12 @@ fromEmbedding Embedding{inject,project} = Embedding'
     { load = fmap fst . project 
     , write = state_ . inject
     , update = \a b da ->
-        let (_ ,mab) = fromMaybe (project b)
+        let (_ ,mab) = from (project b)
             (db,_  ) = step_ mab (a,da)
         in  db
     }
   where
-    fromMaybe = maybe (error "Embedding: 'load' violates expected laws") id
+    from = fromMaybe (error "Embedding: 'load' violates expected laws")
 
 -- | Efficient composition of 'Embedding'
 instance Semigroupoid Embedding where

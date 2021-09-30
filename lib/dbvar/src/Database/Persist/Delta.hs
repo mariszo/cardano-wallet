@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -19,9 +18,11 @@ import Prelude hiding
     ( all )
 
 import Control.Monad
-    ( forM, void )
+    ( forM_, void )
 import Control.Monad.IO.Class
     ( MonadIO, liftIO )
+import Data.Bifunctor
+    ( first )
 import Data.DBVar
     ( Store (..) )
 import Data.Delta
@@ -67,7 +68,7 @@ persistDB
 persistDB = Database
     { selectAll = map toPair <$> Persist.selectList all []
     , deleteAll = Persist.deleteWhere all
-    , repsertMany = Persist.repsertMany . map (\(key,val) -> (toKey key, val))
+    , repsertMany = Persist.repsertMany . map (first toKey)
     , deleteOne = Persist.delete . toKey
     , updateOne = \(key,val) -> Persist.replace (toKey key) val
     }
@@ -87,7 +88,7 @@ sqlDB
 sqlDB = Database
     { selectAll = map toPair <$> Sql.callSql Sql.selectAll
     , deleteAll = Sql.runSql $ Sql.deleteAll proxy
-    , repsertMany = \zs -> void $ forM zs $
+    , repsertMany = \zs -> forM_ zs $
         Sql.runSql . Sql.repsertOne . fromPair
     , deleteOne = Sql.runSql . Sql.deleteOne proxy . Col . Primary
     , updateOne = Sql.runSql . Sql.updateOne . fromPair
@@ -153,8 +154,8 @@ newDatabaseStore db = do
         , updateS = \table ds -> do
             debug $ do
                 say "\n** updateS table deltas"
-                sayShow $ table
-                sayShow $ ds
+                sayShow table
+                sayShow ds
             mapM_ (update1 table) ds
             rememberSupply (apply ds table) -- need to use updated supply
         }
@@ -162,8 +163,8 @@ newDatabaseStore db = do
     debug m = if False then m else pure ()
 
     update1 _ (InsertManyDB zs) = void $ repsertMany db zs
-    update1 _ (DeleteManyDB ks) = void $ forM ks $ deleteOne db
-    update1 _ (UpdateManyDB zs) = void $ forM zs $ updateOne db
+    update1 _ (DeleteManyDB ks) = forM_ ks $ deleteOne db
+    update1 _ (UpdateManyDB zs) = forM_ zs $ updateOne db
 
 {- Note [Unique ID supply in newDBStore]
 

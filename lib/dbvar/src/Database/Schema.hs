@@ -57,7 +57,7 @@ newtype Primary = Primary { getPrimary :: Int }
 --
 -- > INTEGER  PRIMARY KEY NOT NULL
 -- > TEXT  NOT NULL
-data SqlColType = SqlColType Text
+newtype SqlColType = SqlColType Text
     deriving (Eq,Ord,Show)
 
 -- | Helper for converting 'SqlType' into an SQL column type with constraints.

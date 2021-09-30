@@ -38,6 +38,7 @@ import Control.Monad.Class.MonadSTM
     , modifyTVar'
     , newTVarIO
     , readTVar
+    , readTVarIO
     , retry
     , writeTVar
     )
@@ -112,7 +113,7 @@ newWithCache update a = do
     cache  <- newTVarIO a
     locked <- newTVarIO False  -- lock for updating the cache
     pure $ DBVar
-        { readDBVar_   = atomically $ readTVar cache
+        { readDBVar_   = readTVarIO cache
         , updateDBVar_ = \delta -> do
             old <- atomically $ do
                 readTVar locked >>= \case
@@ -193,6 +194,7 @@ data Store m da = Store
         -> m () -- write new value
     }
 
+{- HLINT ignore newStore "Use readTVarIO" -}
 -- | An in-memory 'Store' from a mutable variable ('TVar').
 -- Useful for testing.
 newStore :: (Delta da, MonadSTM m) => m (Store m da)
@@ -259,6 +261,7 @@ cachedStore Store{loadS,writeS,updateS} = do
         }
 -}
 
+{- HLINT ignore embedStore "Use readTVarIO" -}
 embedStore :: (MonadSTM m, Delta da)
     => Embedding da db -> Store m db -> m (Store m da)
 embedStore embed bstore = do

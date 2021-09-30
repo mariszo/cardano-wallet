@@ -155,13 +155,13 @@ instance Functor (DeltaDB key) where
 instance (key ~ Int) => Delta (DeltaDB key row) where
     type Base (DeltaDB key row) = Table row
     apply (InsertManyDB zs) table@Table{rows,uids} = table
-        { rows = foldr (.) id [ Map.insert k r | (k,r) <- zs ] rows
+        { rows = foldr ($) rows [ Map.insert k r | (k,r) <- zs ]
         , uids = consume (map fst zs) uids
         }
     apply (DeleteManyDB ks) table@Table{rows} =
-        table{ rows = foldr (.) id [ Map.delete k | k <- ks ] rows }
+        table{ rows = foldr ($) rows [ Map.delete k | k <- ks ] }
     apply (UpdateManyDB zs) table@Table{rows} =
-        table{ rows = foldr (.) id [ Map.adjust (const r) k | (k,r) <- zs ] rows }
+        table{ rows = foldr ($) rows [ Map.adjust (const r) k | (k,r) <- zs ] }
 
 tableIntoDatabase :: Embedding [DeltaTable row] [DeltaDB Int row]
 tableIntoDatabase = mkEmbedding Embedding'
@@ -231,13 +231,13 @@ deltaListFromPile = Append . map snd . sortOn (Down . fst) . getPile
     Supply
 -------------------------------------------------------------------------------}
 -- | A supply of unique IDs.
-data Supply = Supply
+newtype Supply = Supply
     { now  :: Int -- ^ Largest unique ID that is *in use*.
     }
 
 instance Show Supply where
     showsPrec d (Supply{now}) = showParen (d > app_prec) $
-        showString "Supply {now = " . showsPrec 0 now . showString "} "
+        showString "Supply {now = " . shows now . showString "} "
       where app_prec = 10
 
 -- | Fresh supply of unique IDs.
